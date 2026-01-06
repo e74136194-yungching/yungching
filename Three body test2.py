@@ -1,0 +1,143 @@
+#Please open with Rhino8
+# -*- coding: utf-8 -*-
+import rhinoscriptsyntax as rs
+import math
+import random
+
+# ------------------------------------------------------------------
+# Visible Entangled Ribbons (Surface Loft Version)
+# ------------------------------------------------------------------
+
+def create_sculpture():
+    rs.EnableRedraw(False)
+    
+    # 1. Initialization
+    print("Initializing...")
+    SCALE = 50.0  # Scale factor for visibility
+    STEPS = 1000  # Simulation length
+    G = 1.0
+    softening = 2.0 
+    
+    # Create Layers with RGB colors
+    layers = ["Ribbon_A", "Ribbon_B", "Ribbon_C"]
+    colors = [(255, 50, 50), (50, 255, 50), (50, 50, 255)]
+    
+    
+    for i in range(3):
+        if not rs.IsLayer(layers[i]): rs.AddLayer(layers[i], colors[i])
+
+    # 2. Physics Parameters & Setup
+    bodies = []
+    # Randomize bodies within a constrained area
+    for i in range(3):
+        bodies.append({
+            'x': random.uniform(-2, 2),
+            'y': random.uniform(-2, 2),
+            'z': random.uniform(-2, 2),
+            'vx': random.uniform(-0.5, 0.5),
+            'vy': random.uniform(-0.5, 0.5),
+            'vz': random.uniform(-0.5, 0.5),
+            'mass': random.uniform(3.0, 6.0),
+            'history': []
+        })
+
+    print("Simulating Physics (Strong Entanglement)...")
+    
+    # 3. Physics Simulation Loop
+    for t in range(STEPS):
+        forces = [[0.0, 0.0, 0.0] for _ in range(3)]
+        
+        for i in range(3):
+            b1 = bodies[i]
+            
+            # A. Gravitational Force
+            for j in range(3):
+                if i == j: continue
+                b2 = bodies[j]
+                
+                dx = b2['x'] - b1['x']
+                dy = b2['y'] - b1['y']
+                dz = b2['z'] - b1['z']
+                dist_sq = dx**2 + dy**2 + dz**2 + 0.1 # +0.1 to avoid zero division
+                dist = math.sqrt(dist_sq)
+                
+                f =  G * b1['mass'] * b2['mass'] / (dist_sq + softening)
+                forces[i][0] += f * (dx/dist)
+                forces[i][1] += f * (dy/dist)
+                forces[i][2] += f * (dz/dist)
+            
+            # B. Strong Center Spring Force (The Anchor)
+            # This prevents any planet from flying away (fixes the lonely blue planet)
+            dist_origin = math.sqrt(b1['x']**2 + b1['y']**2 + b1['z']**2)
+            if dist_origin > 4.0:
+                pull = (dist_origin - 4.0) * 0.5 # Stronger pull the further it gets
+                forces[i][0] -= b1['x'] * pull
+                forces[i][1] -= b1['y'] * pull
+                forces[i][2] -= b1['z'] * pull
+
+        # Update Position and Velocity
+        dt = 0.006
+        for i in range(3):
+            b = bodies[i]
+            b['vx'] += forces[i][0] / b['mass'] * dt
+            b['vy'] += forces[i][1] / b['mass'] * dt
+            b['vz'] += forces[i][2] / b['mass'] * dt
+            b['x'] += b['vx'] * dt
+            b['y'] += b['vy'] * dt
+            b['z'] += b['vz'] * dt
+            
+            # Store Scaled Point
+            if t % 50 == 0:
+                b['history'].append( (b['x']*SCALE, b['y']*SCALE, b['z']*SCALE) )
+
+    # 4. Generate Geometry (Ribbons)
+    print("Building Geometry...")
+    
+    curves = []
+    # Generate the 3 main path curves first
+    for i in range(3):
+        pts = bodies[i]['history']
+        if len(pts) > 2:
+            crv = rs.AddInterpCurve(pts)
+            curves.append(crv)
+        else:
+            curves.append(None)
+
+    # Generate Surfaces between curves (Loft)
+    # Connections: 0-1, 1-2, 2-0 (Closed Loop of Ribbons)
+    pairs = [(0, 1), (1, 2), (2, 0)]
+    
+    created_objects = []
+    
+    for idx, (i, j) in enumerate(pairs):
+        c1 = curves[i]
+        c2 = curves[j]
+        
+        if c1 and c2:
+            rs.CurrentLayer(layers[idx]) 
+            
+            try:
+                # Create Loft Surface between the two curves
+                srf = rs.AddLoftSrf([c1, c2], start=None, end=None, closed=False, loft_type=0)
+                if srf:
+                    created_objects.extend(srf)
+                    rs.ObjectColor(srf, colors[idx])
+            except:
+                print("Loft failed for pair " + str(i) + "-" + str(j))
+
+    # 5. Cleanup and Display
+    if len(created_objects) > 0:
+        rs.DeleteObjects(curves) # Remove guide curves, keep surfaces
+        print("Success! Created " + str(len(created_objects)) + " ribbons.")
+    else:
+        print("Geometry generation failed. Keeping curves.")
+
+    rs.EnableRedraw(True)
+    rs.ZoomExtents()
+    
+    # Add a reference sphere at the center so you can find the object
+    rs.CurrentLayer("Default")
+    rs.AddSphere([0,0,0], SCALE/5.0)
+
+if __name__ == "__main__":
+    create_sculpture()
