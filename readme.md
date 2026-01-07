@@ -797,3 +797,120 @@ if __name__ == "__main__":
     create_braided_sculpture_loft()
 ![Threebodydonutrendered](Threebodydonutrendered.png)
 ![Threebodydonutwireframe](Threebodydonutwireframe.png)
+
+Three-Body Pipe Sculpture (Rhino Python)
+
+This script generates a three-dimensional sculptural form based on a three-body gravitational system, translated into solid pipe geometry in Rhino.
+
+import rhinoscriptsyntax as rs
+import math
+
+
+class Body:
+    def __init__(self, mass, pos, vel):
+        self.m = mass
+        self.p = list(pos) 
+        self.v = list(vel) 
+        self.path = [tuple(pos)] 
+
+def generate_sculpture():
+    rs.EnableRedraw(False)
+    
+   
+    G = 1.0          
+    dt = 0.01        
+    steps = 1500     
+    radius = 40     
+    
+   
+    p1_x, p1_y = 0.97000436, -0.24308753
+    v1_x, v1_y = 0.46620368, 0.43236573
+    v3_x, v3_y = -2 * v1_x, -2 * v1_y
+    
+    
+    z_perturbation = 0.08 
+    
+    bodies = []
+   
+    bodies.append(Body(1.0, [p1_x, p1_y, 0], [v1_x, v1_y, 0]))
+    
+    bodies.append(Body(1.0, [-p1_x, -p1_y, 0], [v1_x, v1_y, 0]))
+   
+    bodies.append(Body(1.0, [0, 0, 0], [v3_x, v3_y, z_perturbation]))
+
+    print("Simulating Physics...")
+    
+    for t in range(steps):
+     
+        forces = [[0.0, 0.0, 0.0] for _ in range(3)]
+        
+        for i in range(3):
+            for j in range(3):
+                if i == j: continue
+                
+               
+                dx = bodies[j].p[0] - bodies[i].p[0]
+                dy = bodies[j].p[1] - bodies[i].p[1]
+                dz = bodies[j].p[2] - bodies[i].p[2]
+                dist_sq = dx*dx + dy*dy + dz*dz
+                dist = math.sqrt(dist_sq) + 1e-5 
+                
+                
+                f_mag = (G * bodies[i].m * bodies[j].m) / dist_sq
+                
+            
+                forces[i][0] += f_mag * (dx / dist)
+                forces[i][1] += f_mag * (dy / dist)
+                forces[i][2] += f_mag * (dz / dist)
+        
+        
+        for i in range(3):
+            ax = forces[i][0] / bodies[i].m
+            ay = forces[i][1] / bodies[i].m
+            az = forces[i][2] / bodies[i].m
+            
+        
+            bodies[i].v[0] += ax * dt
+            bodies[i].v[1] += ay * dt
+            bodies[i].v[2] += az * dt
+            
+        
+            bodies[i].p[0] += bodies[i].v[0] * dt
+            bodies[i].p[1] += bodies[i].v[1] * dt
+            bodies[i].p[2] += bodies[i].v[2] * dt
+            
+            
+            if t % 5 == 0:
+                bodies[i].path.append(tuple(bodies[i].p))
+
+
+    print("Building Geometry...")
+    generated_pipes = []
+    
+    
+    layer_name = "ThreeBody_Sculpture"
+    if not rs.IsLayer(layer_name): rs.AddLayer(layer_name)
+    rs.CurrentLayer(layer_name)
+
+    for i, b in enumerate(bodies):
+        if len(b.path) > 1:
+           
+            curve_id = rs.AddInterpCurve(b.path)
+            
+            pipes = rs.AddPipe(curve_id, 0, radius, cap=1) 
+            
+            if pipes:
+                generated_pipes.extend(pipes)
+            
+            
+            rs.DeleteObject(curve_id)
+
+
+    if generated_pipes:
+        origin = [0,0,0]
+        rs.ScaleObjects(generated_pipes, origin, [10, 10, 10])
+        print("Done! Sculpture created.")
+    
+    rs.EnableRedraw(True)
+
+![ball](ball.png)
