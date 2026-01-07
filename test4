@@ -1,0 +1,86 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+# =========================
+# 基本參數
+# =========================
+G = 1.0
+DT = 0.02
+STEPS = 4000
+
+# 三個力場中心（質量）
+masses = np.array([3.0, 2.0, 1.5])
+
+# 初始位置（不要對稱，才會抽象）
+centers = np.array([
+    [-1.2,  0.3],
+    [ 1.0, -0.4],
+    [ 0.2,  1.3]
+], dtype=float)
+
+# 初始速度（很慢）
+vel = np.array([
+    [ 0.02,  0.01],
+    [-0.01,  0.015],
+    [ 0.015,-0.02]
+], dtype=float)
+
+# =========================
+# 計算加速度（三體本身）
+# =========================
+def acc_centers(c):
+    a = np.zeros_like(c)
+    for i in range(3):
+        for j in range(3):
+            if i != j:
+                d = c[j] - c[i]
+                dist = np.linalg.norm(d) + 1e-6
+                a[i] += G * masses[j] * d / dist**3
+    return a
+
+# =========================
+# 建立「被影響的粒子」
+# =========================
+NUM_PARTICLES = 200
+particles = np.random.uniform(-3, 3, (NUM_PARTICLES, 2))
+paths = [[] for _ in range(NUM_PARTICLES)]
+
+# =========================
+# 粒子受力（只受三體影響）
+# =========================
+def particle_force(p, centers):
+    f = np.zeros(2)
+    for i in range(3):
+        d = centers[i] - p
+        dist = np.linalg.norm(d) + 1e-4
+        f += masses[i] * d / dist**2
+    return f
+
+# =========================
+# 主迴圈
+# =========================
+for _ in range(STEPS):
+
+    # --- 更新三體中心 ---
+    a = acc_centers(centers)
+    vel += a * DT
+    centers += vel * DT
+
+    # --- 更新粒子 ---
+    for i in range(NUM_PARTICLES):
+        f = particle_force(particles[i], centers)
+        particles[i] += f * DT * 0.15
+        paths[i].append(particles[i].copy())
+
+# =========================
+# 繪圖（抽象重點）
+# =========================
+plt.figure(figsize=(8, 8))
+plt.axis("off")
+plt.gca().set_aspect("equal")
+
+for path in paths:
+    path = np.array(path)
+    plt.plot(path[:, 0], path[:, 1], color="black", alpha=0.08, linewidth=0.6)
+
+plt.show()
