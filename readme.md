@@ -477,3 +477,111 @@ def create_sculpture():
 ![Motiontrajectorylinesmodel image](Motiontrajectorylinesmodel.png)
 ![blackandwhite image](blackandwhite.png)
 ![Color image](Color.png)
+
+# Dount
+
+# -*- coding: utf-8 -*-
+import rhinoscriptsyntax as rs
+import math
+import sys
+
+# ------------------------------------------------------------------
+# Figure-8 Braided Sculpture (Rhino 8 Compatible)
+# 功能：物理模擬三體 8 字型軌道，並透過 Loft 建立編織實體
+# ------------------------------------------------------------------
+
+def create_braided_sculpture_loft():
+    # 確保編碼正常
+    if sys.version_info.major < 3:
+        try:
+            reload(sys)
+            sys.setdefaultencoding('utf-8')
+        except NameError:
+            pass 
+
+    rs.EnableRedraw(False)
+    
+    # --- 1. 物理初始條件 (Figure-Eight Orbit) ---
+    p1_x, p1_y = 0.97000436, -0.24308753
+    v1_x, v1_y = 0.46620368, 0.43236573
+    v3_x, v3_y = -2 * v1_x, -2 * v1_y
+    
+    # --- 2. 模擬與幾何設定 ---
+    TOTAL_STEPS = 632  # 迴圈總步數
+    DT = 0.01          # 時間增量
+    SCALE = 40.0       # 放大倍率
+    SECTION_RADIUS = 1.8 # 管道粗細
+    DENSITY = 2        # 截面密度
+    TWIST_RATE = 0.15  # 編織旋轉速度
+    BRAID_WIDTH = 2.5  # 編織間距
+    
+    bodies_pos = [[p1_x, p1_y, 0], [-p1_x, -p1_y, 0], [0, 0, 0]]
+    bodies_vel = [[v1_x, v1_y, 0], [v1_x, v1_y, 0], [v3_x, v3_y, 0]]
+    core_path = []
+    
+    # --- 3. 軌跡計算 (物理模擬) ---
+    for t in range(TOTAL_STEPS):
+        forces = [[0.0, 0.0, 0.0] for _ in range(3)]
+        for i in range(3):
+            for j in range(3):
+                if i == j: continue
+                dx, dy, dz = [bodies_pos[j][k] - bodies_pos[i][k] for k in range(3)]
+                dist_sq = dx*dx + dy*dy + dz*dz
+                dist = math.sqrt(dist_sq)
+                f = 1.0 / dist_sq
+                forces[i][0] += f * (dx/dist)
+                forces[i][1] += f * (dy/dist)
+                forces[i][2] += f * (dz/dist)
+        
+        for i in range(3):
+            for k in range(3):
+                bodies_vel[i][k] += forces[i][k] * DT
+                bodies_pos[i][k] += bodies_vel[i][k] * DT
+            
+        # 加入 Z 軸波動增加立體感
+        z = math.sin(2 * math.pi * t / TOTAL_STEPS) * 0.5 
+        core_path.append( (bodies_pos[0][0]*SCALE, bodies_pos[0][1]*SCALE, z*SCALE) )
+
+    # --- 4. Rhino 幾何生成 ---
+    layer_names = ["Orbit_Red", "Orbit_Green", "Orbit_Blue"]
+    layer_colors = [(220, 20, 20), (20, 220, 20), (20, 20, 220)]
+    for n, c in zip(layer_names, layer_colors):
+        if not rs.IsLayer(n): rs.AddLayer(n, c)
+
+    temp_crv = rs.AddInterpCurve(core_path, degree=3)
+    crv_domain = rs.CurveDomain(temp_crv)
+    crv_collections = [[], [], []] 
+    
+    step_size = (crv_domain[1] - crv_domain[0]) / (len(core_path) / DENSITY)
+    curr_t = crv_domain[0]
+    count = 0
+    
+    while curr_t <= crv_domain[1]:
+        plane = rs.CurvePerpFrame(temp_crv, curr_t)
+        rot_base = count * TWIST_RATE
+        for k in range(3):
+            angle = rot_base + (k * (2 * math.pi / 3))
+            vec_u = rs.VectorScale(plane.XAxis, math.cos(angle) * BRAID_WIDTH)
+            vec_v = rs.VectorScale(plane.YAxis, math.sin(angle) * BRAID_WIDTH)
+            pt = rs.PointAdd(plane.Origin, rs.VectorAdd(vec_u, vec_v))
+            circle = rs.AddCircle(pt, SECTION_RADIUS) 
+            rs.TransformObject(circle, rs.XformChangeBasis(rs.WorldXYPlane(), plane))
+            crv_collections[k].append(circle)
+        curr_t += step_size
+        count += 1
+
+    # --- 5. 放樣實體 ---
+    for k in range(3):
+        rs.CurrentLayer(layer_names[k])
+        rs.AddLoftSrf(crv_collections[k], loft_type=0, closed=True)
+        rs.DeleteObjects(crv_collections[k])
+
+    rs.DeleteObject(temp_crv)
+    rs.EnableRedraw(True)
+    rs.ZoomExtents()
+    print("Sculpture Created Successfully.")
+
+if __name__ == "__main__":
+    create_braided_sculpture_loft()
+![Threebodydonutrendered](Threebodydonutrendered.png)
+![Threebodydonutwireframes](Threebodydonutwireframes.png)
