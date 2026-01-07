@@ -1,0 +1,112 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+import csv
+
+# ==================================================
+# 基本參數
+# ==================================================
+G = 1.0
+DT = 0.01
+STEPS = 6000
+
+# ==================================================
+# 質量設定（層級關係重點）
+# ==================================================
+masses = np.array([
+    12.0,   # 主體（核心）
+    1.2,    # 次要空間
+    0.3     # 游離／事件空間
+])
+
+# ==================================================
+# 初始位置（主體置中）
+# ==================================================
+r = np.array([
+    [0.0, 0.0],    # 主核心
+    [2.2, 0.0],    # 次空間
+    [2.8, 0.0]     # 事件空間
+], dtype=float)
+
+# ==================================================
+# 初始速度（形成穩定＋半穩定）
+# ==================================================
+v = np.array([
+    [0.0, 0.0],    # 核心幾乎不動
+    [0.0, 1.25],   # 穩定繞行
+    [0.0, 1.65]    # 偏快 → 偶爾脫離
+], dtype=float)
+
+# ==================================================
+# 計算加速度
+# ==================================================
+def acceleration(r):
+    a = np.zeros_like(r)
+    for i in range(3):
+        for j in range(3):
+            if i != j:
+                diff = r[j] - r[i]
+                dist = np.linalg.norm(diff) + 1e-6
+                a[i] += G * masses[j] * diff / dist**3
+    return a
+
+# ==================================================
+# Velocity Verlet（穩定積分）
+# ==================================================
+def step(r, v):
+    a = acceleration(r)
+    r_new = r + v * DT + 0.5 * a * DT**2
+    a_new = acceleration(r_new)
+    v_new = v + 0.5 * (a + a_new) * DT
+    return r_new, v_new
+
+# ==================================================
+# Matplotlib 視覺化
+# ==================================================
+fig, ax = plt.subplots()
+ax.set_xlim(-4, 4)
+ax.set_ylim(-4, 4)
+ax.set_aspect("equal")
+ax.set_title("Hierarchical Three-Body System")
+
+points, = ax.plot([], [], "o")
+trails = [
+    ax.plot([], [], "-", linewidth=2.5, alpha=0.9)[0],  # 主體
+    ax.plot([], [], "-", linewidth=1.8, alpha=0.7)[0],  # 次體
+    ax.plot([], [], "-", linewidth=1.0, alpha=0.5)[0]   # 游離體
+]
+
+trail_data = [[], [], []]
+
+# ==================================================
+# 更新函式
+# ==================================================
+def update(frame):
+    global r, v
+
+    r, v = step(r, v)
+
+    points.set_data(r[:, 0], r[:, 1])
+
+    for i in range(3):
+        trail_data[i].append(r[i].copy())
+        data = np.array(trail_data[i][-1200:])
+        trails[i].set_data(data[:, 0], data[:, 1])
+
+    return points, *trails
+
+ani = FuncAnimation(fig, update, frames=STEPS, interval=20)
+plt.show()
+
+# ==================================================
+# 輸出 CSV（給 Rhino / GH）
+# ==================================================
+with open("hierarchical_trajectories.csv", "w", newline="") as f:
+    writer = csv.writer(f)
+    writer.writerow(["body", "x", "y", "z_time"])
+
+    for i, trail in enumerate(trail_data):
+        for t, p in enumerate(trail):
+            writer.writerow([i, p[0], p[1], t * DT])
+
+print("Saved: hierarchical_trajectories.csv")
