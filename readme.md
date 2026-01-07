@@ -1,90 +1,111 @@
 # Proposal
 
 ![cover_image](cover.png)
-Figure-8 Braided Sphere Sculpture (Rhino Python)
+Figure-8 Braided Sphere Sculpture
+Parameter Study (Rhino Python)
 
-This Rhino Python script generates a braided sphere sculpture following a stable figure-8 three-body orbit.
-It computes a closed-loop trajectory (one full period), converts it into a guiding curve, and places three colored sphere strands around the curve using perpendicular frames—offset and rotated to form a continuous braid.
+This project investigates how parameter variation affects a braided sculptural form derived from a stable figure-8 three-body orbit.
 
-Open and run this script in Rhino
-It requires Rhino’s EditpythonScript and will not run in a standard Python interpreter.
-
-Requirements
-
-Rhinoceros 3D (Rhino 6 / 7 / 8)
-
-Rhino Python support (rhinoscriptsyntax)
-
-How to Run (Rhino)
-
-Open Rhino.
-
-Run EditPythonScript (Rhino 7/8) or PythonScript.
-
-Paste the script and execute it.
-
-Rhino will generate the braided spheres and run ZoomExtents automatically.
-
-What It Creates
-
-A closed figure-8 core path derived from a classic three-body orbit configuration (pre-tuned initial conditions for loop closure)
-
-A temporary interpolated curve (used only for orientation frames)
-
-Three sphere strands (Red / Green / Blue) braided around the core curve:
-
-Spheres are placed every DENSITY steps along the curve
-
-Each strand is offset by BRAID_WIDTH
-
-The braid twists along the path using TWIST_RATE
-
-Three layers:
-
-Orbit_Red
-
-Orbit_Green
-
-Orbit_Blue
-
-Key Parameters to Customize
-
-Inside create_braided_sculpture():
-
-TOTAL_STEPS   = 632   # One full closed loop period
-DT            = 0.01  # Simulation timestep
-SCALE         = 40.0  # Overall sculpture scale
-
-SPHERE_RADIUS = 1.8   # Sphere size
-DENSITY       = 2     # Place a sphere every N curve samples (lower = denser)
-
-TWIST_RATE    = 0.15  # Twist amount per step (higher = tighter braid)
-BRAID_WIDTH   = 2.5   # Radial offset of strands from core curve
+The base orbit remains fixed; only selected parameters are adjusted to study changes in density, twist, spatial separation, and scale.
 
 
-Tips:
+Run in Rhino only.
+Requires EditPythonScript and rhinoscriptsyntax.
+Not compatible with standard Python.
 
-Want a smoother / more “solid” braid? → lower DENSITY (e.g., 1)
+Base Parameters
+TOTAL_STEPS = 632
+DT          = 0.01
+SCALE       = 40.0
 
-Want a more dramatic braid? → increase BRAID_WIDTH and/or TWIST_RATE
+SPHERE_RADIUS = 1.8
+DENSITY       = 2
 
-Want it larger in Rhino units? → increase SCALE
+TWIST_RATE    = 0.15
+BRAID_WIDTH   = 2.5
+
+
+This configuration is used as the reference state.
+
+Parameter Variations
+1. Density — DENSITY
+
+Controls sphere spacing along the curve.
+
+Low → solid, continuous braid
+
+High → lighter, more porous structure
+
+2. Braid Width — BRAID_WIDTH
+
+Controls radial separation of strands.
+
+Low → tight, rope-like
+
+High → open, spatially expressive
+
+3. Twist Rate — TWIST_RATE
+
+Controls rotational speed around the core path.
+
+Low → calm, relaxed braid
+
+High → tense, highly twisted form
+
+4. Scale — SCALE
+
+Controls overall size in Rhino units.
+
+Small → object-scale
+
+Large → installation-scale
+
+5. Sphere Radius — SPHERE_RADIUS
+
+Controls visual weight and thickness.
+
+Small → light, filament-like
+
+Large → heavy, monumental
+
+Controlled Variables
+
+To ensure comparability, the following remain constant:
+
+Initial orbit conditions
+
+Number of bodies
+
+Time step (DT)
+
+Simulation length (TOTAL_STEPS)
+
+Evaluation Criteria
+
+Continuity
+
+Legibility of strands
+
+Density (solid vs void)
+
+Spatial complexity
+
+Fabrication potential
 
 Implementation Notes
 
-The script tracks only one body from the three-body system to build the core figure-8 shape.
+Only one body defines the core figure-8 path.
 
-A subtle Z-wave is applied (sin(t * 0.02)) to make the loop slightly 3D / sculptural instead of perfectly planar.
+A subtle Z-axis sinusoidal perturbation introduces 3D depth.
 
-Perpendicular frames (rs.CurvePerpFrame) provide local axes for placing the braided offsets.
+Perpendicular frames are used for consistent braiding.
 
-The temporary curve is deleted after sphere placement (the sculpture remains).
+Temporary guide geometry is deleted after generation.
 
 Script (Rhino Python)
 # -*- coding: utf-8 -*-
 import rhinoscriptsyntax as rs
 import math
-
 # ------------------------------------------------------------------
 # Figure-8 Braided Sphere Sculpture (Infinite Loop)
 # ------------------------------------------------------------------
