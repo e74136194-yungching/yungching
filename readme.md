@@ -584,4 +584,4 @@ def create_braided_sculpture_loft():
 if __name__ == "__main__":
     create_braided_sculpture_loft()
 ![Threebodydonutrendered](Threebodydonutrendered.png)
-![Threebodydonutwireframes](Threebodydonutwireframes.png)
+![Threebodydonutwireframe](Threebodydonutwireframe.png)
