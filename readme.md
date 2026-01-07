@@ -550,8 +550,6 @@ def create_sculpture():
     rs.CurrentLayer("Default")
     rs.AddSphere([0, 0, 0], SCALE / 5.0)
 
-if __name__ == "__main__":
-    create_sculpture()
 ![Motiontrajectorylinesmodel image](Motiontrajectorylinesmodel.png)
 ![blackandwhite image](blackandwhite.png)
 ![Color image](Color.png)
