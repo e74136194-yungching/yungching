@@ -362,92 +362,16 @@ if __name__ == "__main__":
 
 ![VisibleEntangledRibbons1 image](VisibleEntangledRibbons1.png)
 
-Visible Entangled Ribbons (Rhino Python)
-
-This script generates a sculptural geometry in Rhino by simulating a simple three-body system and translating its motion into entangled ribbon-like surfaces.
-
-Three bodies interact through mutual gravitational forces and a strong central anchoring force.
-Their trajectories are recorded over time, converted into curves, and then lofted pairwise to form a closed loop of flowing ribbon surfaces.
-
-This script must be opened and executed in Rhino
-It relies on rhinoscriptsyntax and will not run in a standard Python environment.
-
-Requirements
-
-Rhinoceros 3D (Rhino 6 / 7 / 8)
-
-Rhino Python (rhinoscriptsyntax)
-
-How to Run (Open with Rhino)
-
-Launch Rhino.
-
-Open the Python script editor:
-
-Rhino 7 / 8: run EditPythonScript
-
-or directly run the file using PythonScript
-
-Paste the script and execute it.
-
-Rhino will automatically generate the geometry and zoom to the result.
-
-What This Script Creates
-
-3 colored layers
-
-Ribbon_A (Red)
-
-Ribbon_B (Green)
-
-Ribbon_C (Blue)
-
-3 motion paths generated from a physics simulation
-
-3 lofted ribbon surfaces
-
-Lofted between curve pairs: (0–1), (1–2), (2–0)
-
-A reference sphere at the origin for easy orientation
-
-Automatic ZoomExtents after completion
-
-Each execution produces a slightly different result due to randomized initial conditions.
-
-Key Parameters You Can Adjust
-
-Inside create_sculpture():
-
-SCALE = 50.0    # Overall size of the sculpture
-STEPS = 2000    # Length of the simulation
-dt = 0.02       # Time step (affects smoothness and motion speed)
-
-
-Increasing SCALE makes the sculpture larger and more visible.
-
-Increasing STEPS creates longer, more complex ribbons (but increases computation time).
-
-Initial positions, velocities, and masses are randomized for generative variation.
-
-Conceptual Notes
-
-The gravitational interaction produces intertwined trajectories.
-
-A strong central spring force prevents bodies from drifting away, maintaining spatial cohesion.
-
-Curves act as invisible guides and are removed after successful surface generation.
-
-The resulting ribbons form a closed entangled system, emphasizing continuity and mutual influence.
-
-Script (Rhino Python)
-# -*- coding: utf-8 -*-
-import rhinoscriptsyntax as rs
-import math
-import random
 
 # ------------------------------------------------------------------
 # Visible Entangled Ribbons (Surface Loft Version)
 # ------------------------------------------------------------------
+
+This script generates a sculptural geometry in Rhino by simulating a simple three-body system and translating its motion into entangled ribbon-like surfaces.
+Three bodies interact through mutual gravitational forces and a strong central anchoring force.
+Their trajectories are recorded over time, converted into curves, and then lofted pairwise to form a closed loop of flowing ribbon surfaces.
+This script must be opened and executed in Rhino
+It relies on rhinoscriptsyntax and will not run in a standard Python environment.
 
 def create_sculpture():
     rs.EnableRedraw(False)
