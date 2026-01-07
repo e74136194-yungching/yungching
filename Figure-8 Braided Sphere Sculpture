@@ -1,0 +1,154 @@
+# -*- coding: utf-8 -*-
+import rhinoscriptsyntax as rs
+import math
+
+# ------------------------------------------------------------------
+# Figure-8 Braided Sphere Sculpture (Infinite Loop)
+# ------------------------------------------------------------------
+
+def create_braided_sculpture():
+    rs.EnableRedraw(False)
+    
+    print("1. Initializing Infinite Pattern...")
+    
+    # --- Constants for the Stable Figure-8 Orbit ---
+    # These precise numbers ensure the loop closes perfectly
+    p1_x = 0.97000436
+    p1_y = -0.24308753
+    v1_x = 0.46620368
+    v1_y = 0.43236573
+    v3_x = -2 * v1_x
+    v3_y = -2 * v1_y
+    
+    # --- Simulation Settings ---
+    # Total steps to complete one full loop
+    TOTAL_STEPS = 632 
+    DT = 0.01
+    SCALE = 40.0
+    
+    # Sphere settings
+    SPHERE_RADIUS = 1.8  # Size of the balls
+    DENSITY = 2          # Draw a sphere every N steps (Lower = denser)
+    
+    # Braiding settings (How much they twist around each other)
+    TWIST_RATE = 0.15    # Speed of rotation around the core
+    BRAID_WIDTH = 2.5    # How far apart the colors are
+    
+    # Initial Physics State
+    bodies_pos = [
+        [p1_x, p1_y, 0],       # Body 1
+        [-p1_x, -p1_y, 0],     # Body 2
+        [0, 0, 0]              # Body 3
+    ]
+    bodies_vel = [
+        [v1_x, v1_y, 0],
+        [v1_x, v1_y, 0],
+        [v3_x, v3_y, 0]
+    ]
+    
+    # Storage for the core path
+    core_path = []
+    
+    print("2. Calculating Trajectory...")
+    
+    # Physics Loop (Newtonian Gravity)
+    for t in range(TOTAL_STEPS):
+        forces = [[0.0, 0.0, 0.0] for _ in range(3)]
+        
+        for i in range(3):
+            for j in range(3):
+                if i == j: continue
+                dx = bodies_pos[j][0] - bodies_pos[i][0]
+                dy = bodies_pos[j][1] - bodies_pos[i][1]
+                dz = bodies_pos[j][2] - bodies_pos[i][2]
+                dist_sq = dx*dx + dy*dy + dz*dz
+                dist = math.sqrt(dist_sq)
+                f = 1.0 / dist_sq
+                
+                forces[i][0] += f * (dx/dist)
+                forces[i][1] += f * (dy/dist)
+                forces[i][2] += f * (dz/dist)
+        
+        # Update Velocity & Position
+        for i in range(3):
+            bodies_vel[i][0] += forces[i][0] * DT
+            bodies_vel[i][1] += forces[i][1] * DT
+            bodies_vel[i][2] += forces[i][2] * DT
+            bodies_pos[i][0] += bodies_vel[i][0] * DT
+            bodies_pos[i][1] += bodies_vel[i][1] * DT
+            bodies_pos[i][2] += bodies_vel[i][2] * DT
+            
+        # We only need to track ONE body to get the core shape
+        # creating a 3D effect by mapping time to Z height slightly
+        x = bodies_pos[0][0]
+        y = bodies_pos[0][1]
+        
+        # Add a slight 3D wave to make it sculptural (Mobius-like)
+        z = math.sin(t * 0.02) * 0.3 
+        
+        core_path.append( (x*SCALE, y*SCALE, z*SCALE) )
+
+    print("3. Generating Spheres...")
+    
+    # Create Layers
+    layer_names = ["Orbit_Red", "Orbit_Green", "Orbit_Blue"]
+    layer_colors = [(220, 20, 20), (20, 220, 20), (20, 20, 220)]
+    
+    for i in range(3):
+        if not rs.IsLayer(layer_names[i]): 
+            rs.AddLayer(layer_names[i], layer_colors[i])
+
+    # Create a temporary curve to help us find perpendicular frames
+    temp_crv = rs.AddInterpCurve(core_path)
+    if not temp_crv: return
+    
+    crv_domain = rs.CurveDomain(temp_crv)
+    
+    # Generate Spheres along the path
+    # We iterate through the curve and place 3 spheres at each step
+    # rotated 120 degrees apart to form a braid.
+    
+    step_size = (crv_domain[1] - crv_domain[0]) / (len(core_path) / DENSITY)
+    
+    current_t = crv_domain[0]
+    counter = 0
+    
+    while current_t <= crv_domain[1]:
+        # Get the plane perpendicular to the curve direction
+        plane = rs.CurvePerpFrame(temp_crv, current_t)
+        
+        # Calculate rotation angle for braiding effect
+        rotation_base = counter * TWIST_RATE
+        
+        # We create 3 spheres (Red, Green, Blue) around this center point
+        for k in range(3):
+            rs.CurrentLayer(layer_names[k])
+            
+            # 120 degree separation (2 * PI / 3)
+            angle = rotation_base + (k * (2 * math.pi / 3))
+            
+            # Calculate offset position on the plane
+            # X_local = cos(angle) * width
+            # Y_local = sin(angle) * width
+            
+            vec_u = rs.VectorScale(plane.XAxis, math.cos(angle) * BRAID_WIDTH)
+            vec_v = rs.VectorScale(plane.YAxis, math.sin(angle) * BRAID_WIDTH)
+            
+            # Final 3D position
+            sphere_center = rs.PointAdd(plane.Origin, rs.VectorAdd(vec_u, vec_v))
+            
+            # Add Sphere
+            rs.AddSphere(sphere_center, SPHERE_RADIUS)
+            
+        current_t += step_size
+        counter += 1
+        
+    # Cleanup
+    rs.DeleteObject(temp_crv)
+    
+    rs.EnableRedraw(True)
+    rs.ZoomExtents()
+    print("Done. Braided sphere sculpture created.")
+
+if __name__ == "__main__":
+    create_braided_sculpture()
