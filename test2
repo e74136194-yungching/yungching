@@ -1,0 +1,97 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+import csv
+
+# =====================
+# 參數設定
+# =====================
+G = 1.0
+DT = 0.01
+STEPS = 5000
+
+# 三體質量（相同）
+masses = np.array([1.0, 1.0, 1.0])
+
+# =====================
+# 八字軌道初始條件（經典）
+# =====================
+r = np.array([
+    [-0.97000436,  0.24308753],
+    [ 0.97000436, -0.24308753],
+    [ 0.0,         0.0       ]
+], dtype=float)
+
+v = np.array([
+    [ 0.4662036850,  0.4323657300],
+    [ 0.4662036850,  0.4323657300],
+    [-0.9324073700, -0.8647314600]
+], dtype=float)
+
+# =====================
+# 加速度計算
+# =====================
+def acceleration(r):
+    a = np.zeros_like(r)
+    for i in range(3):
+        for j in range(3):
+            if i != j:
+                diff = r[j] - r[i]
+                dist = np.linalg.norm(diff) + 1e-6
+                a[i] += G * masses[j] * diff / dist**3
+    return a
+
+# =====================
+# Velocity Verlet 積分
+# =====================
+def step(r, v):
+    a = acceleration(r)
+    r_new = r + v * DT + 0.5 * a * DT**2
+    a_new = acceleration(r_new)
+    v_new = v + 0.5 * (a + a_new) * DT
+    return r_new, v_new
+
+# =====================
+# Matplotlib 設定
+# =====================
+fig, ax = plt.subplots()
+ax.set_xlim(-2.5, 2.5)
+ax.set_ylim(-2.5, 2.5)
+ax.set_aspect("equal")
+
+points, = ax.plot([], [], "o")
+trails = [ax.plot([], [], "-", alpha=0.6)[0] for _ in range(3)]
+trail_data = [[], [], []]
+
+# =====================
+# 更新動畫
+# =====================
+def update(frame):
+    global r, v
+
+    r, v = step(r, v)
+
+    points.set_data(r[:, 0], r[:, 1])
+
+    for i in range(3):
+        trail_data[i].append(r[i].copy())
+        data = np.array(trail_data[i][-800:])
+        trails[i].set_data(data[:, 0], data[:, 1])
+
+    return points, *trails
+
+ani = FuncAnimation(fig, update, frames=STEPS, interval=20)
+plt.show()
+
+# =====================
+# 輸出 3D 軌跡（z = time）
+# =====================
+with open("figure8_trajectories.csv", "w", newline="") as f:
+    writer = csv.writer(f)
+    writer.writerow(["body", "x", "y", "z_time"])
+
+    for i, trail in enumerate(trail_data):
+        for t, p in enumerate(trail):
+            writer.writerow([i, p[0], p[1], t * DT])
+
+print("Saved: figure8_trajectories.csv")
