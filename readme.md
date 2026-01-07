@@ -145,7 +145,7 @@ def update(frame):
 
 animation = FuncAnimation(fig, update, frames=range(0, len(t_points), 2), interval=10, blit=True)
 plt.show()
-![Three body test image](Three_body_test.png)
+![Threebodytestimage](Threebodytest.png)
 
 # 2D Three-Body Motion
 import numpy as np
@@ -213,7 +213,7 @@ plt.gca().set_aspect('equal', 'box')
 plt.title("Three-Body Simulation")
 plt.show()
 
-![Three body test1 image](Three_body_test1.png)
+![Threebodytest1 image](Threebodytest1.png)
 
 # Visible Entangled Ribbons
 # Please open with Rhino8
@@ -360,4 +360,4 @@ def create_sculpture():
 if __name__ == "__main__":
     create_sculpture()
 
-![Visible Entangled Ribbons1 image](images/Visible_Entangled_Ribbons1.png)
+![VisibleEntangledRibbons1 image](VisibleEntangledRibbons1.png)
