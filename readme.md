@@ -361,3 +361,197 @@ if __name__ == "__main__":
     create_sculpture()
 
 ![VisibleEntangledRibbons1 image](VisibleEntangledRibbons1.png)
+
+Visible Entangled Ribbons (Rhino Python)
+
+This script generates a sculptural geometry in Rhino by simulating a simple three-body system and translating its motion into entangled ribbon-like surfaces.
+
+Three bodies interact through mutual gravitational forces and a strong central anchoring force.
+Their trajectories are recorded over time, converted into curves, and then lofted pairwise to form a closed loop of flowing ribbon surfaces.
+
+This script must be opened and executed in Rhino
+It relies on rhinoscriptsyntax and will not run in a standard Python environment.
+
+Requirements
+
+Rhinoceros 3D (Rhino 6 / 7 / 8)
+
+Rhino Python (rhinoscriptsyntax)
+
+How to Run (Open with Rhino)
+
+Launch Rhino.
+
+Open the Python script editor:
+
+Rhino 7 / 8: run EditPythonScript
+
+or directly run the file using PythonScript
+
+Paste the script and execute it.
+
+Rhino will automatically generate the geometry and zoom to the result.
+
+What This Script Creates
+
+3 colored layers
+
+Ribbon_A (Red)
+
+Ribbon_B (Green)
+
+Ribbon_C (Blue)
+
+3 motion paths generated from a physics simulation
+
+3 lofted ribbon surfaces
+
+Lofted between curve pairs: (0–1), (1–2), (2–0)
+
+A reference sphere at the origin for easy orientation
+
+Automatic ZoomExtents after completion
+
+Each execution produces a slightly different result due to randomized initial conditions.
+
+Key Parameters You Can Adjust
+
+Inside create_sculpture():
+
+SCALE = 50.0    # Overall size of the sculpture
+STEPS = 2000    # Length of the simulation
+dt = 0.02       # Time step (affects smoothness and motion speed)
+
+
+Increasing SCALE makes the sculpture larger and more visible.
+
+Increasing STEPS creates longer, more complex ribbons (but increases computation time).
+
+Initial positions, velocities, and masses are randomized for generative variation.
+
+Conceptual Notes
+
+The gravitational interaction produces intertwined trajectories.
+
+A strong central spring force prevents bodies from drifting away, maintaining spatial cohesion.
+
+Curves act as invisible guides and are removed after successful surface generation.
+
+The resulting ribbons form a closed entangled system, emphasizing continuity and mutual influence.
+
+Script (Rhino Python)
+# -*- coding: utf-8 -*-
+import rhinoscriptsyntax as rs
+import math
+import random
+
+# ------------------------------------------------------------------
+# Visible Entangled Ribbons (Surface Loft Version)
+# ------------------------------------------------------------------
+
+def create_sculpture():
+    rs.EnableRedraw(False)
+    
+    # 1. Initialization
+    print("Initializing...")
+    SCALE = 50.0  # Scale factor for visibility
+    STEPS = 2000  # Simulation length
+    
+    # Create Layers with RGB colors
+    layers = ["Ribbon_A", "Ribbon_B", "Ribbon_C"]
+    colors = [(255, 50, 50), (50, 255, 50), (50, 50, 255)]
+    
+    for i in range(3):
+        if not rs.IsLayer(layers[i]):
+            rs.AddLayer(layers[i], colors[i])
+
+    # 2. Physics Parameters & Setup
+    bodies = []
+    for i in range(3):
+        bodies.append({
+            'x': random.uniform(-2, 2),
+            'y': random.uniform(-2, 2),
+            'z': random.uniform(-2, 2),
+            'vx': random.uniform(-0.5, 0.5),
+            'vy': random.uniform(-0.5, 0.5),
+            'vz': random.uniform(-0.5, 0.5),
+            'mass': random.uniform(3.0, 6.0),
+            'history': []
+        })
+
+    print("Simulating Physics...")
+    
+    # 3. Simulation Loop
+    for t in range(STEPS):
+        forces = [[0.0, 0.0, 0.0] for _ in range(3)]
+        
+        for i in range(3):
+            b1 = bodies[i]
+            for j in range(3):
+                if i == j:
+                    continue
+                b2 = bodies[j]
+                
+                dx = b2['x'] - b1['x']
+                dy = b2['y'] - b1['y']
+                dz = b2['z'] - b1['z']
+                dist_sq = dx**2 + dy**2 + dz**2 + 0.1
+                dist = math.sqrt(dist_sq)
+                
+                f = (2.0 * b1['mass'] * b2['mass']) / dist_sq
+                forces[i][0] += f * (dx/dist)
+                forces[i][1] += f * (dy/dist)
+                forces[i][2] += f * (dz/dist)
+
+            dist_origin = math.sqrt(b1['x']**2 + b1['y']**2 + b1['z']**2)
+            if dist_origin > 4.0:
+                pull = (dist_origin - 4.0) * 0.5
+                forces[i][0] -= b1['x'] * pull
+                forces[i][1] -= b1['y'] * pull
+                forces[i][2] -= b1['z'] * pull
+
+        dt = 0.02
+        for i in range(3):
+            b = bodies[i]
+            b['vx'] += forces[i][0] / b['mass'] * dt
+            b['vy'] += forces[i][1] / b['mass'] * dt
+            b['vz'] += forces[i][2] / b['mass'] * dt
+            b['x'] += b['vx'] * dt
+            b['y'] += b['vy'] * dt
+            b['z'] += b['vz'] * dt
+            
+            b['history'].append(
+                (b['x'] * SCALE, b['y'] * SCALE, b['z'] * SCALE)
+            )
+
+    # 4. Geometry Generation
+    print("Building Geometry...")
+    curves = []
+    for i in range(3):
+        pts = bodies[i]['history']
+        curves.append(rs.AddInterpCurve(pts) if len(pts) > 2 else None)
+
+    pairs = [(0, 1), (1, 2), (2, 0)]
+    created_objects = []
+
+    for idx, (i, j) in enumerate(pairs):
+        if curves[i] and curves[j]:
+            rs.CurrentLayer(layers[idx])
+            srf = rs.AddLoftSrf([curves[i], curves[j]])
+            if srf:
+                created_objects.extend(srf)
+                rs.ObjectColor(srf, colors[idx])
+
+    if created_objects:
+        rs.DeleteObjects(curves)
+
+    rs.EnableRedraw(True)
+    rs.ZoomExtents()
+    rs.CurrentLayer("Default")
+    rs.AddSphere([0, 0, 0], SCALE / 5.0)
+
+if __name__ == "__main__":
+    create_sculpture()
+![Motiontrajectorylinesmodel image](Motiontrajectorylinesmodel.png)
+![blackandwhite image](blackandwhite.png)
+![Color image](Color.png)
