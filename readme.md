@@ -1,8 +1,220 @@
 # Proposal
 
 ![cover_image](cover.png)
+Figure-8 Braided Sphere Sculpture (Rhino Python)
 
-This is what we want to do.
+This Rhino Python script generates a braided sphere sculpture following a stable figure-8 three-body orbit.
+It computes a closed-loop trajectory (one full period), converts it into a guiding curve, and places three colored sphere strands around the curve using perpendicular frames—offset and rotated to form a continuous braid.
+
+Open and run this script in Rhino
+It requires Rhino’s EditpythonScript and will not run in a standard Python interpreter.
+
+Requirements
+
+Rhinoceros 3D (Rhino 6 / 7 / 8)
+
+Rhino Python support (rhinoscriptsyntax)
+
+How to Run (Rhino)
+
+Open Rhino.
+
+Run EditPythonScript (Rhino 7/8) or PythonScript.
+
+Paste the script and execute it.
+
+Rhino will generate the braided spheres and run ZoomExtents automatically.
+
+What It Creates
+
+A closed figure-8 core path derived from a classic three-body orbit configuration (pre-tuned initial conditions for loop closure)
+
+A temporary interpolated curve (used only for orientation frames)
+
+Three sphere strands (Red / Green / Blue) braided around the core curve:
+
+Spheres are placed every DENSITY steps along the curve
+
+Each strand is offset by BRAID_WIDTH
+
+The braid twists along the path using TWIST_RATE
+
+Three layers:
+
+Orbit_Red
+
+Orbit_Green
+
+Orbit_Blue
+
+Key Parameters to Customize
+
+Inside create_braided_sculpture():
+
+TOTAL_STEPS   = 632   # One full closed loop period
+DT            = 0.01  # Simulation timestep
+SCALE         = 40.0  # Overall sculpture scale
+
+SPHERE_RADIUS = 1.8   # Sphere size
+DENSITY       = 2     # Place a sphere every N curve samples (lower = denser)
+
+TWIST_RATE    = 0.15  # Twist amount per step (higher = tighter braid)
+BRAID_WIDTH   = 2.5   # Radial offset of strands from core curve
+
+
+Tips:
+
+Want a smoother / more “solid” braid? → lower DENSITY (e.g., 1)
+
+Want a more dramatic braid? → increase BRAID_WIDTH and/or TWIST_RATE
+
+Want it larger in Rhino units? → increase SCALE
+
+Implementation Notes
+
+The script tracks only one body from the three-body system to build the core figure-8 shape.
+
+A subtle Z-wave is applied (sin(t * 0.02)) to make the loop slightly 3D / sculptural instead of perfectly planar.
+
+Perpendicular frames (rs.CurvePerpFrame) provide local axes for placing the braided offsets.
+
+The temporary curve is deleted after sphere placement (the sculpture remains).
+
+Script (Rhino Python)
+# -*- coding: utf-8 -*-
+import rhinoscriptsyntax as rs
+import math
+
+# ------------------------------------------------------------------
+# Figure-8 Braided Sphere Sculpture (Infinite Loop)
+# ------------------------------------------------------------------
+
+def create_braided_sculpture():
+    rs.EnableRedraw(False)
+    
+    print("1. Initializing Infinite Pattern...")
+    
+    # --- Constants for the Stable Figure-8 Orbit ---
+    # These precise numbers ensure the loop closes perfectly
+    p1_x = 0.97000436
+    p1_y = -0.24308753
+    v1_x = 0.46620368
+    v1_y = 0.43236573
+    v3_x = -2 * v1_x
+    v3_y = -2 * v1_y
+    
+    # --- Simulation Settings ---
+    # Total steps to complete one full loop
+    TOTAL_STEPS = 632 
+    DT = 0.01
+    SCALE = 40.0
+    
+    # Sphere settings
+    SPHERE_RADIUS = 1.8  # Size of the balls
+    DENSITY = 2          # Draw a sphere every N steps (Lower = denser)
+    
+    # Braiding settings (How much they twist around each other)
+    TWIST_RATE = 0.15    # Speed of rotation around the core
+    BRAID_WIDTH = 2.5    # How far apart the colors are
+    
+    # Initial Physics State
+    bodies_pos = [
+        [p1_x, p1_y, 0],       # Body 1
+        [-p1_x, -p1_y, 0],     # Body 2
+        [0, 0, 0]              # Body 3
+    ]
+    bodies_vel = [
+        [v1_x, v1_y, 0],
+        [v1_x, v1_y, 0],
+        [v3_x, v3_y, 0]
+    ]
+    
+    # Storage for the core path
+    core_path = []
+    
+    print("2. Calculating Trajectory...")
+    
+    # Physics Loop (Newtonian Gravity)
+    for t in range(TOTAL_STEPS):
+        forces = [[0.0, 0.0, 0.0] for _ in range(3)]
+        
+        for i in range(3):
+            for j in range(3):
+                if i == j: continue
+                dx = bodies_pos[j][0] - bodies_pos[i][0]
+                dy = bodies_pos[j][1] - bodies_pos[i][1]
+                dz = bodies_pos[j][2] - bodies_pos[i][2]
+                dist_sq = dx*dx + dy*dy + dz*dz
+                dist = math.sqrt(dist_sq)
+                f = 1.0 / dist_sq
+                
+                forces[i][0] += f * (dx/dist)
+                forces[i][1] += f * (dy/dist)
+                forces[i][2] += f * (dz/dist)
+        
+        # Update Velocity & Position
+        for i in range(3):
+            bodies_vel[i][0] += forces[i][0] * DT
+            bodies_vel[i][1] += forces[i][1] * DT
+            bodies_vel[i][2] += forces[i][2] * DT
+            bodies_pos[i][0] += bodies_vel[i][0] * DT
+            bodies_pos[i][1] += bodies_vel[i][1] * DT
+            bodies_pos[i][2] += bodies_vel[i][2] * DT
+            
+        # Track ONE body to define the core curve
+        x = bodies_pos[0][0]
+        y = bodies_pos[0][1]
+        
+        # Slight 3D wave for sculptural depth
+        z = math.sin(t * 0.02) * 0.3 
+        
+        core_path.append( (x*SCALE, y*SCALE, z*SCALE) )
+
+    print("3. Generating Spheres...")
+    
+    # Create Layers
+    layer_names = ["Orbit_Red", "Orbit_Green", "Orbit_Blue"]
+    layer_colors = [(220, 20, 20), (20, 220, 20), (20, 20, 220)]
+    
+    for i in range(3):
+        if not rs.IsLayer(layer_names[i]): 
+            rs.AddLayer(layer_names[i], layer_colors[i])
+
+    # Temporary curve for perpendicular frames
+    temp_crv = rs.AddInterpCurve(core_path)
+    if not temp_crv: return
+    
+    crv_domain = rs.CurveDomain(temp_crv)
+    
+    step_size = (crv_domain[1] - crv_domain[0]) / (len(core_path) / DENSITY)
+    
+    current_t = crv_domain[0]
+    counter = 0
+    
+    while current_t <= crv_domain[1]:
+        plane = rs.CurvePerpFrame(temp_crv, current_t)
+        rotation_base = counter * TWIST_RATE
+        
+        for k in range(3):
+            rs.CurrentLayer(layer_names[k])
+            angle = rotation_base + (k * (2 * math.pi / 3))
+            
+            vec_u = rs.VectorScale(plane.XAxis, math.cos(angle) * BRAID_WIDTH)
+            vec_v = rs.VectorScale(plane.YAxis, math.sin(angle) * BRAID_WIDTH)
+            
+            sphere_center = rs.PointAdd(plane.Origin, rs.VectorAdd(vec_u, vec_v))
+            rs.AddSphere(sphere_center, SPHERE_RADIUS)
+            
+        current_t += step_size
+        counter += 1
+        
+    rs.DeleteObject(temp_crv)
+    
+    rs.EnableRedraw(True)
+    rs.ZoomExtents()
+    print("Done. Braided sphere sculpture created.")
+
+
 # Three-Body Orbital Dynamics Simulator
 import numpy as np
 import matplotlib.pyplot as plt
