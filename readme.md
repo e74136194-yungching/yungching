@@ -4,103 +4,54 @@
 Figure-8 Braided Sphere Sculpture
 Parameter Study (Rhino Python)
 
-This project investigates how parameter variation affects a braided sculptural form derived from a stable figure-8 three-body orbit.
+This project studies how parameter changes affect a braided form generated from a stable figure-8 three-body orbit.
 
-The base orbit remains fixed; only selected parameters are adjusted to study changes in density, twist, spatial separation, and scale.
+The orbit is fixed; only geometric parameters are varied.
 
+Environment
 
-Run in Rhino only.
-Requires EditPythonScript and rhinoscriptsyntax.
-Not compatible with standard Python.
+Run in Rhino only (EditPythonScript).
+Requires rhinoscriptsyntax.
 
-Base Parameters
+Base Setup
 TOTAL_STEPS = 632
 DT          = 0.01
 SCALE       = 40.0
-
 SPHERE_RADIUS = 1.8
 DENSITY       = 2
-
 TWIST_RATE    = 0.15
 BRAID_WIDTH   = 2.5
 
+Parameters Studied
 
-This configuration is used as the reference state.
+DENSITY – spacing of spheres (solid ↔ porous)
+BRAID_WIDTH – strand separation (tight ↔ open)
+WIST_RATE – rotational intensity (calm ↔ tense)
+SCALE – overall size
+SPHERE_RADIUS – visual weight
 
-Parameter Variations
-1. Density — DENSITY
+Constants
 
-Controls sphere spacing along the curve.
-
-Low → solid, continuous braid
-
-High → lighter, more porous structure
-
-2. Braid Width — BRAID_WIDTH
-
-Controls radial separation of strands.
-
-Low → tight, rope-like
-
-High → open, spatially expressive
-
-3. Twist Rate — TWIST_RATE
-
-Controls rotational speed around the core path.
-
-Low → calm, relaxed braid
-
-High → tense, highly twisted form
-
-4. Scale — SCALE
-
-Controls overall size in Rhino units.
-
-Small → object-scale
-
-Large → installation-scale
-
-5. Sphere Radius — SPHERE_RADIUS
-
-Controls visual weight and thickness.
-
-Small → light, filament-like
-
-Large → heavy, monumental
-
-Controlled Variables
-
-To ensure comparability, the following remain constant:
-
-Initial orbit conditions
-
+Orbit configuration
 Number of bodies
-
-Time step (DT)
-
-Simulation length (TOTAL_STEPS)
-
-Evaluation Criteria
-
+Time step and duration
+Evaluation
 Continuity
-
-Legibility of strands
-
-Density (solid vs void)
-
+Legibility
+Density
 Spatial complexity
-
 Fabrication potential
 
-Implementation Notes
+Notes
 
-Only one body defines the core figure-8 path.
+One body defines the figure-8 path.
+Z-axis perturbation adds 3D depth.
+Perpendicular frames generate braid geometry.
+Guide curves are removed after generation.
 
-A subtle Z-axis sinusoidal perturbation introduces 3D depth.
-
-Perpendicular frames are used for consistent braiding.
-
-Temporary guide geometry is deleted after generation.
+Script
+import rhinoscriptsyntax as rs
+import math
 
 Script (Rhino Python)
 # -*- coding: utf-8 -*-
